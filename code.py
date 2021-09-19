@@ -35,7 +35,7 @@ def _tokenize(expression: str) -> List[Token]:
             continue
 
         if char in ['+', '-'] and current_token in ['+', '-']:
-            raise TokenizationError(f'Cannot tokenize after {expression[:i]}')
+            raise TokenizationError(f'Too many signs at {expression[:i+1]}')
 
         if char in OPERATORS and current_token:
             tokens.append(current_token)
@@ -52,7 +52,7 @@ def _tokenize(expression: str) -> List[Token]:
             continue
 
         if char == '.' and '.' in current_token:
-            raise TokenizationError(f'Too many . at {expression[:i]}')
+            raise TokenizationError(f'Too many . at {expression[:i+1]}')
 
         if char == '.':
             current_token += char
