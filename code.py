@@ -1,6 +1,9 @@
-from typing import List
+from typing import List, Literal, Optional, Tuple
 from operator import add, sub, mul, truediv, mod, pow 
 
+Token = str
+Tree = list
+Operator = Literal['+', '-', '*', '/', '%', '^']
 
 OPERATORS = {
     '+': add,
@@ -12,13 +15,17 @@ OPERATORS = {
 }
 
 
-class TokenizeError(ValueError):
+class TokenizationError(ValueError):
     pass
 
 
-def _tokenize(expression: str) -> List[str]:
+class EvaluationError(ValueError):
+    pass
 
-    tokens: List[str] = []
+
+def _tokenize(expression: str) -> List[Token]:
+
+    tokens: List[Token] = []
 
     current_token = ''
 
@@ -28,7 +35,7 @@ def _tokenize(expression: str) -> List[str]:
             continue
 
         if char in ['+', '-'] and current_token in ['+', '-']:
-            raise TokenizeError(f'Cannot tokenize after {expression[:i]}')
+            raise TokenizationError(f'Cannot tokenize after {expression[:i]}')
 
         if char in OPERATORS and current_token:
             tokens.append(current_token)
@@ -45,27 +52,53 @@ def _tokenize(expression: str) -> List[str]:
             continue
 
         if char == '.' and '.' in current_token:
-            raise TokenizeError(f'Not expecting another . at {expression[:i]}')
+            raise TokenizationError(f'Too many . at {expression[:i]}')
 
         if char == '.':
             current_token += char
             continue
 
-        raise TokenizeError(f'Illegal character at {expression[:i]}')
+        raise TokenizationError(f'Illegal character at {expression[:i+1]}')
 
     tokens.append(current_token)
 
     return tokens
 
 
+def _split_token_list(
+    tokens: List[Token],
+    operator: Operator,
+) -> Optional[Tuple[List[Token], List[Token]]]:
+
+    if operator in tokens:
+        i = tokens.index(operator)
+        return tokens[:i], tokens[i+1:]
+
+
+def _evaluate(tokens: List[Token]) -> Tree:
+
+    for operator in OPERATORS:
+
+        tokens_split = _split_token_list(tokens, operator)
+
+        if tokens_split:
+            left, right = tokens_split
+
+            return OPERATORS[operator](_evaluate(left), _evaluate(right))
+
+    if len(tokens) > 1:
+        raise EvaluationError(f'Cannot find operator in {tokens}')
+
+    try:
+
+        return float(tokens[0])
+
+    except ValueError:
+
+        raise EvaluationError(f'Cannot convert {tokens[0]} to float.')
+
+
 def calculate(expression: str) -> float:
 
-    operators_padded = map(lambda x: f' {x} ', OPERATORS)
+    return _evaluate(_tokenize(expression))
 
-    for operator in operators_padded:
-        arguments_split = expression.split(operator)
-        if len(arguments_split) > 1:
-            arguments_cleaned = map(float, arguments_split)
-            return OPERATORS[operator.strip()](*arguments_cleaned)
-
-    return float(arguments_split[0])
